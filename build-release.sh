@@ -76,8 +76,11 @@ if [[ ! -f $PREFIX/lib/libssl.a ]]; then
     if [[ ! -d openssl-$OPENSSL_VER ]]; then
         fetch openssl.tar.gz \
             "https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VER/openssl-$OPENSSL_VER.tar.gz" \
-            "https://www.openssl.org/source/openssl-$OPENSSL_VER.tar.gz"
+            "https://www.openssl.org/source/openssl-$OPENSSL_VER.tar.gz" \
+            "https://codeload.github.com/openssl/openssl/tar.gz/refs/tags/openssl-$OPENSSL_VER"
         tar -xzf openssl.tar.gz && rm -f openssl.tar.gz
+        # codeload 源码包解压目录名为 openssl-openssl-<ver>
+        [[ -d openssl-openssl-$OPENSSL_VER ]] && mv "openssl-openssl-$OPENSSL_VER" "openssl-$OPENSSL_VER"
     fi
     cd "openssl-$OPENSSL_VER"
     case "$ARCH" in
@@ -95,10 +98,16 @@ if [[ ! -f $PREFIX/lib/libngtcp2_crypto_ossl.a ]]; then
     echo ">> 编译 ngtcp2 $NGTCP2_VER"
     cd "$WORK"
     if [[ ! -d ngtcp2-$NGTCP2_VER ]]; then
-        fetch ngtcp2.tar.xz "https://github.com/ngtcp2/ngtcp2/releases/download/v$NGTCP2_VER/ngtcp2-$NGTCP2_VER.tar.xz"
-        tar -xJf ngtcp2.tar.xz && rm -f ngtcp2.tar.xz
+        if fetch ngtcp2.tar.xz "https://github.com/ngtcp2/ngtcp2/releases/download/v$NGTCP2_VER/ngtcp2-$NGTCP2_VER.tar.xz"; then
+            tar -xJf ngtcp2.tar.xz && rm -f ngtcp2.tar.xz
+        else
+            # 备用：git 标签源码包（无 configure，需要 autoreconf）
+            fetch ngtcp2.tar.gz "https://codeload.github.com/ngtcp2/ngtcp2/tar.gz/refs/tags/v$NGTCP2_VER"
+            tar -xzf ngtcp2.tar.gz && rm -f ngtcp2.tar.gz
+        fi
     fi
     cd "ngtcp2-$NGTCP2_VER"
+    [[ -x configure ]] || autoreconf -fi >/dev/null
     PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig ./configure --host="$ARCH-linux-gnu" --prefix="$PREFIX" \
         --enable-lib-only --disable-shared --enable-static --with-openssl \
         OPENSSL_CFLAGS="-I$PREFIX/include" OPENSSL_LIBS="-L$PREFIX/lib -lssl -lcrypto" >/dev/null

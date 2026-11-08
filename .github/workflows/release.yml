@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y xz-utils make perl
+        run: sudo apt-get update && sudo apt-get install -y xz-utils make perl autoconf automake libtool pkg-config
       - name: Cache deps
         uses: actions/cache@v4
         with:
