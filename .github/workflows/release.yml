@@ -49,3 +49,18 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+      # 同时推到 bin 分支：Release 下载节点不可用时，安装脚本改走 raw / jsDelivr
+      - name: Publish to bin branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          git clone --depth 1 --branch bin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" bin \
+            || { mkdir bin && cd bin && git init -b bin && git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" && cd ..; }
+          cd bin
+          mkdir -p "$TAG"
+          cp ../dist/* "$TAG/"
+          echo "$TAG" > VERSION
+          git add -A
+          git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m "binaries $TAG" || exit 0
+          git push origin bin

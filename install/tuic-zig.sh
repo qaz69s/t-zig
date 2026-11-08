@@ -376,22 +376,33 @@ latest_version(){
 
 download_binary(){
     # download_binary <输出目录>；成功返回 0
-    local out=$1 ver=$TUIC_ZIG_VERSION arch url
+    # 依次尝试：GitHub Release → 仓库 bin 分支（raw）→ jsDelivr 镜像
+    local out=$1 ver=$TUIC_ZIG_VERSION arch name base ok=0
     arch=$(arch_affix)
+    name="tuic-zig-linux-$arch.tar.gz"
     [[ -z $ver ]] && ver=$(latest_version)
+    [[ -z $ver ]] && ver=$(curl -fsSL --max-time 10 "https://raw.githubusercontent.com/$TUIC_ZIG_REPO/bin/VERSION" 2>/dev/null | tr -d '[:space:]')
     if [[ -z $ver ]]; then
         yellow "未能从 $TUIC_ZIG_REPO 获取最新版本号"
         return 1
     fi
-    url="https://github.com/$TUIC_ZIG_REPO/releases/download/$ver/tuic-zig-linux-$arch.tar.gz"
     green "下载 tuic-zig $ver（$arch）..."
-    curl -fL --retry 2 -o "$out/pkg.tar.gz" "$url" || return 1
-    if curl -fsL -o "$out/pkg.tar.gz.sha256" "$url.sha256" 2>/dev/null; then
-        local want got
-        want=$(awk '{print $1}' "$out/pkg.tar.gz.sha256")
-        got=$(sha256sum "$out/pkg.tar.gz" | awk '{print $1}')
-        [[ $want != "$got" ]] && { red "SHA256 校验失败"; return 1; }
-    fi
+    for base in "https://github.com/$TUIC_ZIG_REPO/releases/download/$ver" \
+                "https://raw.githubusercontent.com/$TUIC_ZIG_REPO/bin/$ver" \
+                "https://cdn.jsdelivr.net/gh/$TUIC_ZIG_REPO@bin/$ver"; do
+        rm -f "$out/pkg.tar.gz" "$out/pkg.tar.gz.sha256"
+        if curl -fL --retry 2 --connect-timeout 10 --max-time 120 -o "$out/pkg.tar.gz" "$base/$name"; then
+            if curl -fsL --max-time 20 -o "$out/pkg.tar.gz.sha256" "$base/$name.sha256" 2>/dev/null; then
+                local want got
+                want=$(awk '{print $1}' "$out/pkg.tar.gz.sha256")
+                got=$(sha256sum "$out/pkg.tar.gz" | awk '{print $1}')
+                if [[ $want != "$got" ]]; then red "SHA256 校验失败：$base"; continue; fi
+            fi
+            ok=1; break
+        fi
+        yellow "该地址下载失败，换下一个：$base"
+    done
+    [[ $ok == 1 ]] || return 1
     tar -xzf "$out/pkg.tar.gz" -C "$out" || return 1
     [[ -x $out/tuic-zig ]] || return 1
     INSTALLED_VERSION=$ver
