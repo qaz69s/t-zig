@@ -25,6 +25,18 @@ WORK=${WORK:-$SRC/.release-build/$ARCH}
 PREFIX=$WORK/prefix
 mkdir -p "$WORK" "$PREFIX" "$SRC/dist"
 
+# 带重试的下载：fetch <输出文件> <url> [备用 url...]
+fetch(){
+    local out=$1 u; shift
+    for u in "$@"; do
+        if curl -fL --retry 5 --retry-delay 3 --retry-all-errors -o "$out.part" "$u"; then
+            mv -f "$out.part" "$out"; return 0
+        fi
+        echo "!! 下载失败：$u" >&2
+    done
+    rm -f "$out.part"; return 1
+}
+
 HOST=$(uname -m)
 [[ $HOST == arm64 ]] && HOST=aarch64
 TARGET="$ARCH-linux-gnu.$GLIBC"
@@ -34,7 +46,8 @@ ZIG_DIR=$WORK/../zig-$HOST-linux-$ZIG_VER
 if ! command -v zig >/dev/null 2>&1 || [[ $(zig version) != "$ZIG_VER" ]]; then
     if [[ ! -x $ZIG_DIR/zig ]]; then
         echo ">> 下载 Zig $ZIG_VER ($HOST)"
-        curl -fL "https://ziglang.org/download/$ZIG_VER/zig-$HOST-linux-$ZIG_VER.tar.xz" | tar -xJ -C "$WORK/.."
+        fetch "$WORK/../zig.tar.xz" "https://ziglang.org/download/$ZIG_VER/zig-$HOST-linux-$ZIG_VER.tar.xz"
+        tar -xJf "$WORK/../zig.tar.xz" -C "$WORK/.." && rm -f "$WORK/../zig.tar.xz"
     fi
     export PATH=$ZIG_DIR:$PATH
 fi
@@ -60,7 +73,12 @@ export CC=$WORK/bin/cc AR=$WORK/bin/ar RANLIB=$WORK/bin/ranlib
 if [[ ! -f $PREFIX/lib/libssl.a ]]; then
     echo ">> 编译 OpenSSL $OPENSSL_VER（静态，$TARGET）"
     cd "$WORK"
-    [[ -d openssl-$OPENSSL_VER ]] || curl -fL "https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VER/openssl-$OPENSSL_VER.tar.gz" | tar -xz
+    if [[ ! -d openssl-$OPENSSL_VER ]]; then
+        fetch openssl.tar.gz \
+            "https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VER/openssl-$OPENSSL_VER.tar.gz" \
+            "https://www.openssl.org/source/openssl-$OPENSSL_VER.tar.gz"
+        tar -xzf openssl.tar.gz && rm -f openssl.tar.gz
+    fi
     cd "openssl-$OPENSSL_VER"
     case "$ARCH" in
         x86_64) OSSL_T=linux-x86_64 ;;
@@ -76,7 +94,10 @@ fi
 if [[ ! -f $PREFIX/lib/libngtcp2_crypto_ossl.a ]]; then
     echo ">> 编译 ngtcp2 $NGTCP2_VER"
     cd "$WORK"
-    [[ -d ngtcp2-$NGTCP2_VER ]] || curl -fL "https://github.com/ngtcp2/ngtcp2/releases/download/v$NGTCP2_VER/ngtcp2-$NGTCP2_VER.tar.xz" | tar -xJ
+    if [[ ! -d ngtcp2-$NGTCP2_VER ]]; then
+        fetch ngtcp2.tar.xz "https://github.com/ngtcp2/ngtcp2/releases/download/v$NGTCP2_VER/ngtcp2-$NGTCP2_VER.tar.xz"
+        tar -xJf ngtcp2.tar.xz && rm -f ngtcp2.tar.xz
+    fi
     cd "ngtcp2-$NGTCP2_VER"
     PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig ./configure --host="$ARCH-linux-gnu" --prefix="$PREFIX" \
         --enable-lib-only --disable-shared --enable-static --with-openssl \
