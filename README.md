@@ -3,6 +3,15 @@
 TUIC v5 服务端的 Zig 实现。QUIC 传输层用 ngtcp2（OpenSSL 3.5 原生 QUIC TLS 接口），
 QUIC 之上的全部逻辑用 Zig 编写。
 
+## 一键安装
+
+```bash
+wget -N https://raw.githubusercontent.com/qaz69s/t-zig/main/install/tuic-zig.sh && bash tuic-zig.sh
+```
+
+中文菜单，支持安装、卸载、更新、启停、修改配置和输出分享链接，详见 [install/README.md](install/README.md)。
+发布包（x86_64 / aarch64，静态链接 OpenSSL，glibc ≥ 2.17）由 GitHub Actions 在推送 `v*` 标签时自动构建。
+
 ## 架构
 
 | 文件 | 内容 |
