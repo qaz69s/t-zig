@@ -1,0 +1,42 @@
+{
+  "relay": {
+    "server": "127.0.0.1:8444",
+    "uuid": "123e4567-e89b-12d3-a456-426614174000",
+    "password": "bench-pass",
+    "certificates": [
+      "/workspace/work/bench/ca.pem"
+    ],
+    "sni": "localhost",
+    "alpn": [
+      "h3"
+    ],
+    "udp_relay_mode": "native",
+    "congestion_control": "bbr"
+  },
+  "local": {
+    "server": "127.0.0.1:28445",
+    "tcp_forward": [
+      {
+        "listen": "127.0.0.1:28444",
+        "remote": "127.0.0.1:5201"
+      },
+      {
+        "listen": "127.0.0.1:28446",
+        "remote": "127.0.0.1:7777"
+      }
+    ],
+    "udp_forward": [
+      {
+        "listen": "127.0.0.1:28447",
+        "remote": "127.0.0.1:7778",
+        "timeout": "30s"
+      },
+      {
+        "listen": "127.0.0.1:28444",
+        "remote": "127.0.0.1:5201",
+        "timeout": "30s"
+      }
+    ]
+  },
+  "log_level": "warn"
+}

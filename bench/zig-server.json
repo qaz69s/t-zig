@@ -1,0 +1,16 @@
+{
+  "server": "127.0.0.1:8444",
+  "users": {
+    "123e4567-e89b-12d3-a456-426614174000": "bench-pass"
+  },
+  "certificate": "/workspace/work/bench/cert.pem",
+  "private_key": "/workspace/work/bench/key.pem",
+  "alpn": [
+    "h3"
+  ],
+  "congestion_control": "bbr",
+  "udp_relay_ipv6": false,
+  "log_level": "warn",
+  "drop_loopback": false,
+  "drop_private": false
+}

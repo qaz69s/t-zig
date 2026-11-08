@@ -1,0 +1,13 @@
+log_level = "warn"
+server = "127.0.0.1:8443"
+udp_relay_ipv6 = false
+[tls]
+certificate = "/workspace/work/bench/cert.pem"
+private_key = "/workspace/work/bench/key.pem"
+alpn = ["h3"]
+[users]
+"123e4567-e89b-12d3-a456-426614174000" = "bench-pass"
+
+[experimental]
+drop_loopback = false
+drop_private = false
